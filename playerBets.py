@@ -45,9 +45,9 @@ class matchBets:
         for bet in bets:
             userBet = json.loads(bet["answers"])
 
+            totalPoints = 0
             for question in questions:
                 options = json.loads(question["options"])
-                totalPoints = 0
 
                 if question["correct_option"] == userBet[str(question["id"])]["option"]:
                     chosenOptionDetails = [
@@ -57,10 +57,12 @@ class matchBets:
                     ]
                     odds = float(chosenOptionDetails[0]["odds"])
                     amount = float(userBet[str(question["id"])]["amount"])
-                    points = odds * amount
+                    points = odds * amount - amount
+                else:
+                    points = -1 * float(userBet[str(question["id"])]["amount"])
 
                 totalPoints += points
-            self._updateRewards(bet["id"], points=points)
+            self._updateRewards(bet["id"], points=totalPoints)
 
     def _getTotalBets(self):
         cursor = self.conn.cursor()

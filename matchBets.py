@@ -27,7 +27,7 @@ class matchBets:
 
     def _getQuestions(self, id):
         cursor = self.conn.cursor()
-        query = f"SELECT id, correct_option, options  FROM {self.questionsTable} WHERE {self.listIdColumn} = {id}"
+        query = f"SELECT id, question, correct_option, options  FROM {self.questionsTable} WHERE {self.listIdColumn} = {id}"
         cursor.execute(query)
         questions = cursor.fetchall()
 
@@ -58,14 +58,23 @@ class matchBets:
         cursor.execute(query)
 
     def _compareAndUpdateRewards(self, bets, questions):
+
         for bet in bets:
+            print("-----------")
             userBet = json.loads(bet["answers"])
 
+            inningsPoints = float("-inf")
+            totalPoints = 0
             for question in questions:
                 options = json.loads(question["options"])
-                totalPoints = 0
 
+                isInningsQues = False
+                if "innings" in str(question["question"]):
+                    isInningsQues = True
+                
+                points = 0
                 if question["correct_option"] == userBet[str(question["id"])]["option"]:
+                
                     chosenOptionDetails = [
                         option
                         for option in options
@@ -73,10 +82,20 @@ class matchBets:
                     ]
                     odds = float(chosenOptionDetails[0]["odds"])
                     amount = float(userBet[str(question["id"])]["amount"])
-                    points = odds * amount
+                    points = (odds * amount) - amount
+                else:
+                    points = -1 * float(userBet[str(question["id"])]["amount"])
 
-                totalPoints += points
-            self._updateRewards(bet["id"], points=points)
+                if isInningsQues:
+                    if points != float(0):
+                        inningsPoints = max(inningsPoints, points)
+                else:
+                    totalPoints += points
+                print(question["question"], points, totalPoints, inningsPoints)
+            if inningsPoints != float("-inf"):
+                totalPoints += inningsPoints
+
+            self._updateRewards(bet["id"], points=totalPoints)
 
     def _updateListRowStatus(self, matchId):
 
