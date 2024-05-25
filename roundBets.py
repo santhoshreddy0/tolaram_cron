@@ -65,7 +65,7 @@ class matchBets:
             for question in questions:
                 options = json.loads(question["options"])
 
-                if question["correct_option"] == userBet[str(question["id"])]["option"]:
+                if str(question["correct_option"]) == str(userBet[str(question["id"])]["option"]):
                     chosenOptionDetails = [
                         option
                         for option in options

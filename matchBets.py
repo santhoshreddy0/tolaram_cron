@@ -73,7 +73,7 @@ class matchBets:
                     isInningsQues = True
                 
                 points = 0
-                if question["correct_option"] == userBet[str(question["id"])]["option"]:
+                if str(question["correct_option"]) == str(userBet[str(question["id"])]["option"]):
                 
                     chosenOptionDetails = [
                         option
