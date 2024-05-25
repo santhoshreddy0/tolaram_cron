@@ -122,6 +122,7 @@ class matchBets:
                     )
 
                     self._compareAndUpdateRewards(bets=bets, questions=questions)
+                self._updateListRowStatus(matchId=match['id'])
 
                 print("Rounds completed successfully")
 
