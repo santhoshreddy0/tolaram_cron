@@ -68,32 +68,28 @@ class matchBets:
             for question in questions:
                 options = json.loads(question["options"])
 
-                isInningsQues = False
-                if "innings" in str(question["question"]):
-                    isInningsQues = True
                 
                 points = 0
+                
+                chosenOptionDetails = [
+                    option
+                    for option in options
+                    if str(option["id"]) == question["correct_option"]
+                ]
                 if str(question["correct_option"]) == str(userBet[str(question["id"])]["option"]):
                 
-                    chosenOptionDetails = [
-                        option
-                        for option in options
-                        if str(option["id"]) == question["correct_option"]
-                    ]
                     odds = float(chosenOptionDetails[0]["odds"])
                     amount = float(userBet[str(question["id"])]["amount"])
                     points = (odds * amount) - amount
                 else:
-                    points = -1 * float(userBet[str(question["id"])]["amount"])
+                    if len(chosenOptionDetails) > 0 and str(chosenOptionDetails[0]['option']).lower() == 'void' :
+                        points = 0
+                    else :
+                        points = -1 * float(userBet[str(question["id"])]["amount"])
 
-                if isInningsQues:
-                    if points != float(0):
-                        inningsPoints = max(inningsPoints, points)
-                else:
-                    totalPoints += points
+                
+                totalPoints += points
                 print(question["question"], points, totalPoints, inningsPoints)
-            if inningsPoints != float("-inf"):
-                totalPoints += inningsPoints
 
             self._updateRewards(bet["id"], points=totalPoints)
 
