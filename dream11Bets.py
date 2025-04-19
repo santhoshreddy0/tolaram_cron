@@ -67,12 +67,13 @@ class Dream11Bets:
         try:
             while self.process_user_batch():
                 pass
-        except Exception as e:
-            print(f"Error processing bets: {e}")
-        finally:
+
             current_utc = datetime.datetime.now(datetime.UTC)
             self.redis.set(self.REDIS_LASTUPDATED_KEY, current_utc.isoformat())
             print(f"Leaderboard last updated at UTC: {current_utc}")
+        except Exception as e:
+            print(f"Error processing bets: {e}")
+        finally:
             self.db.close()
             self.redis.close()
             print("Database and Redis connections closed.")
