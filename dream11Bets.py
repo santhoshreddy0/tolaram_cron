@@ -1,55 +1,76 @@
 from models.db import getConnection
-from models.redis import redisClient
+from models.redis import RedisClient
 
 
 class Dream11Bets:
-    dream11_players_table = "dream11_players"
+
+    PLAYER_TABLE = "dream11_players"
+    MAPPING_TABLE = "match_player_mapping"
+    REDIS_LEADERBOARD_KEY = "leaderboard"
+    BATCH_LIMIT = 10
+    INITIAL_OFFSET = 0
 
     def __init__(self):
         self.db = getConnection()
-        self.redis = redisClient()
+        self.redis = RedisClient()
+        self.limit = self.BATCH_LIMIT
+        self.offset = self.INITIAL_OFFSET
 
-    def get_bets(self, user_id):
+    def get_users_batch(self, limit=10, offset=0):
+        sql = f"""
+            SELECT DISTINCT user_id 
+            FROM {self.PLAYER_TABLE}
+            LIMIT %s OFFSET %s
         """
-        fetch dream11 bets
-        """
-        sql = f"SELECT * FROM dream11_players WHERE user_id = {user_id}"
         with self.db.cursor() as cursor:
-            cursor.execute(sql, (1,))
-            result = cursor.fetchall()
-            print(result)
-        return result
+            cursor.execute(sql, (limit, offset))
+            return cursor.fetchall()
 
-    def get_all_users(self):
+    def get_user_points(self, user_id):
+        sql = f"""
+            SELECT 
+              SUM(
+                IFNULL(mpm.points, 0) * 
+                CASE
+                  WHEN dp.role_type = 'captain' THEN 2
+                  WHEN dp.role_type = 'vice-captain' THEN 1.5
+                  ELSE 1
+                END
+              ) AS total_points
+            FROM {self.PLAYER_TABLE} dp
+            LEFT JOIN {self.MAPPING_TABLE} mpm 
+              ON dp.player_id = mpm.player_id
+            WHERE dp.user_id = %s
         """
-        fetch all users
-        """
-        sql = "SELECT COUNT(UNIQUE user_id) FROM dream11_players"
         with self.db.cursor() as cursor:
-            cursor.execute(sql)
-            result = cursor.fetchall()
-            print(result)
-        return result
+            cursor.execute(sql, (user_id,))
+            result = cursor.fetchone()
+            return result["total_points"] or 0
+
+    def process_user_batch(self):
+        users = self.get_users_batch(limit=self.limit, offset=self.offset)
+        if not users:
+            return False
+
+        for user in users:
+            user_id = user["user_id"]
+            total_points = self.get_user_points(user_id)
+            print(f"User {user_id} => Points: {total_points}")
+            self.redis.zadd(self.REDIS_LEADERBOARD_KEY, user_id, float(total_points))
+
+        self.offset += self.limit
+        return True
 
     def process(self):
-        """
-        process dream11 bets
-        """
         try:
-            # Fetch users from database
-            bets = self.get_all_users(match_id=1)
-            if not bets:
-                print("No bets found")
-                return
-
+            while self.process_user_batch():
+                pass
         except Exception as e:
             print(f"Error processing bets: {e}")
         finally:
             self.db.close()
             self.redis.close()
             print("Database and Redis connections closed.")
-        # Close the database connection
-
 
 
 def main():

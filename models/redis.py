@@ -7,10 +7,10 @@ class RedisClient:
 
     def __init__(self):
         self.redis = self.connect()
-        if(self.redis.ping()):
+        if self.redis.ping():
             print("Redis connection successful")
-            print("Redis server version:", r.info("server")["redis_version"])
-            return r
+            print("Redis server version:", self.redis.info("server")["redis_version"])
+
         else:
             print("Redis connection failed")
             raise Exception("Redis connection failed")
@@ -23,7 +23,7 @@ class RedisClient:
             username=REDIS_USERNAME,
             password=REDIS_PWD,
         )
-        return r;
+        return r
 
     def get(self, key):
         return self.redis.get(key)
@@ -37,11 +37,9 @@ class RedisClient:
     def zadd(self, key, value, score):
         res = self.redis.zadd(key, {value: score})
         return res
-    
+
     def zrange(self, key, start, end):
         return self.redis.zrange(key, start, end)
-
-    
 
     def exists(self, key):
         return self.redis.exists(key)
@@ -52,8 +50,3 @@ class RedisClient:
         self.redis = None
         print("Redis connection closed")
         return True
-
-    
-  
-      
-
