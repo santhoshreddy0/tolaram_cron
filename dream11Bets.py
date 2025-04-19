@@ -1,5 +1,6 @@
 from models.db import getConnection
 from models.redis import RedisClient
+import datetime
 
 
 class Dream11Bets:
@@ -7,6 +8,7 @@ class Dream11Bets:
     PLAYER_TABLE = "dream11_players"
     MAPPING_TABLE = "match_player_mapping"
     REDIS_LEADERBOARD_KEY = "leaderboard"
+    REDIS_LASTUPDATED_KEY = "last_updated"
     BATCH_LIMIT = 10
     INITIAL_OFFSET = 0
 
@@ -68,6 +70,9 @@ class Dream11Bets:
         except Exception as e:
             print(f"Error processing bets: {e}")
         finally:
+            current_utc = datetime.datetime.now(datetime.UTC)
+            self.redis.set(self.REDIS_LASTUPDATED_KEY, current_utc.isoformat())
+            print(f"Leaderboard last updated at UTC: {current_utc}")
             self.db.close()
             self.redis.close()
             print("Database and Redis connections closed.")
