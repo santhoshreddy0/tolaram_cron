@@ -59,37 +59,48 @@ class matchBets:
 
     def _compareAndUpdateRewards(self, bets, questions):
 
+        question_map = {str(q["id"]): q for q in questions}
+
         for bet in bets:
             print("-----------")
             userBet = json.loads(bet["answers"])
 
-            inningsPoints = float("-inf")
             totalPoints = 0
-            for question in questions:
-                options = json.loads(question["options"])
 
-                
+            for question_id_str, bet_data in userBet.items():
+                question = question_map.get(question_id_str)
+                if not question:
+                    print(f"Question ID {question_id_str} not found. Skipping.")
+                    continue
+
+                options = json.loads(question["options"])
+                correct_option_id = str(question["correct_option"])
+                chosen_option_id = str(bet_data["option"])
+                amount = float(bet_data["amount"])
                 points = 0
-                
+
                 chosenOptionDetails = [
-                    option
-                    for option in options
-                    if str(option["id"]) == question["correct_option"]
+                    opt for opt in options if str(opt["id"]) == correct_option_id
                 ]
-                if str(question["correct_option"]) == str(userBet[str(question["id"])]["option"]):
-                
-                    odds = float(chosenOptionDetails[0]["odds"])
-                    amount = float(userBet[str(question["id"])]["amount"])
+
+                if correct_option_id == chosen_option_id:
+                    odds = (
+                        float(chosenOptionDetails[0]["odds"])
+                        if chosenOptionDetails
+                        else 1.0
+                    )
                     points = (odds * amount) - amount
                 else:
-                    if len(chosenOptionDetails) > 0 and str(chosenOptionDetails[0]['option']).lower() == 'void' :
+                    if (
+                        chosenOptionDetails
+                        and str(chosenOptionDetails[0]["option"]).lower() == "void"
+                    ):
                         points = 0
-                    else :
-                        points = -1 * float(userBet[str(question["id"])]["amount"])
+                    else:
+                        points = -1 * amount
 
-                
                 totalPoints += points
-                print(question["question"], points, totalPoints, inningsPoints)
+                print(question["question"], points, totalPoints)
 
             self._updateRewards(bet["id"], points=totalPoints)
 
@@ -137,7 +148,7 @@ class matchBets:
                     )
 
                     self._compareAndUpdateRewards(bets=bets, questions=questions)
-                self._updateListRowStatus(matchId=match['id'])
+                self._updateListRowStatus(matchId=match["id"])
                 print("Match completed successfully")
 
         except Exception as e:

@@ -52,34 +52,55 @@ class matchBets:
         return bets
 
     def _updateRewards(self, betId, points):
-
         cursor = self.conn.cursor()
         query = f"UPDATE {self.betsTable} SET points = {points}, can_show_points = '1' WHERE id = {betId}"
         cursor.execute(query)
 
     def _compareAndUpdateRewards(self, bets, questions):
+
+        question_map = {str(q["id"]): q for q in questions}
+
         for bet in bets:
             userBet = json.loads(bet["answers"])
-
             totalPoints = 0
-            for question in questions:
-                options = json.loads(question["options"])
 
-                if str(question["correct_option"]) == str(userBet[str(question["id"])]["option"]):
-                    chosenOptionDetails = [
-                        option
-                        for option in options
-                        if str(option["id"]) == question["correct_option"]
-                    ]
-                    odds = float(chosenOptionDetails[0]["odds"])
-                    amount = float(userBet[str(question["id"])]["amount"])
-                    points = odds * amount - amount
+            for question_id_str, bet_data in userBet.items():
+                question = question_map.get(question_id_str)
+                if not question:
+                    print(f"Question ID {question_id_str} not found. Skipping.")
+                    continue
+
+                options = json.loads(question["options"])
+                correct_option_id = str(question["correct_option"])
+                chosen_option_id = str(bet_data["option"])
+                amount = float(bet_data["amount"])
+                points = 0
+
+                chosenOptionDetails = [
+                    opt for opt in options if str(opt["id"]) == correct_option_id
+                ]
+
+                if correct_option_id == chosen_option_id:
+                    odds = (
+                        float(chosenOptionDetails[0]["odds"])
+                        if chosenOptionDetails
+                        else 1.0
+                    )
+                    points = (odds * amount) - amount
+                else:
+                    if (
+                        chosenOptionDetails
+                        and str(chosenOptionDetails[0]["option"]).lower() == "void"
+                    ):
+                        points = 0
+                    else:
+                        points = -1 * amount
 
                 totalPoints += points
+
             self._updateRewards(bet["id"], points=totalPoints)
 
     def _updateListRowStatus(self, matchId):
-
         cursor = self.conn.cursor()
         query = (
             f"UPDATE {self.listTable} SET bet_status = 'completed' WHERE id = {matchId}"
@@ -96,7 +117,6 @@ class matchBets:
 
     def process(self):
         try:
-
             matches = self._getMatches()
             print(matches)
             if matches == None or len(matches) == 0:
@@ -112,6 +132,7 @@ class matchBets:
                 except NoAnswerFoundException as e:
                     print(e)
                     continue
+
                 totalBets = self._getTotalBets(match["id"])
 
                 for i in range(0, totalBets, self.limit):
@@ -122,8 +143,8 @@ class matchBets:
                     )
 
                     self._compareAndUpdateRewards(bets=bets, questions=questions)
-                self._updateListRowStatus(matchId=match['id'])
 
+                self._updateListRowStatus(matchId=match["id"])
                 print("Rounds completed successfully")
 
         except Exception as e:
