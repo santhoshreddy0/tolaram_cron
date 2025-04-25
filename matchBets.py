@@ -90,14 +90,14 @@ class matchBets:
                         else 1.0
                     )
                     points = (odds * amount) - amount
-                # else:
-                #     if (
-                #         chosenOptionDetails
-                #         and str(chosenOptionDetails[0]["option"]).lower() == "void"
-                #     ):
-                #         points = 0
-                #     else:
-                #         points = -1 * amount
+                else:
+                    if (
+                        chosenOptionDetails
+                        and str(chosenOptionDetails[0]["option"]).lower() == "void"
+                    ):
+                        points = 0
+                    else:
+                        points = -1 * amount
 
                 totalPoints += points
                 print(question["question"], points, totalPoints)
