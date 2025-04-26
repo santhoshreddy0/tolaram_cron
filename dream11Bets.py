@@ -73,29 +73,27 @@ class Dream11Bets:
         users = self.get_users_batch(limit=self.limit, offset=self.offset)
         if not users:
             return False
-
         for user in users:
             user_id = user["user_id"]
             total_points = self.get_user_points(user_id)
             print(f"User {user_id} => Points: {total_points}")
             self.redis.zadd(self.REDIS_LEADERBOARD_KEY, user_id, float(total_points))
-
         self.offset += self.limit
         return True
 
     def process(self):
         try:
             if not self.should_update_leaderboard():
-                print("Leaderboard is already up to date. Exiting...")
+                print("Leaderboard is already up to date. Updating timestamp only...")
+                current_utc = datetime.datetime.now(datetime.UTC)
+                self.redis.set(self.REDIS_LASTUPDATED_KEY, current_utc.isoformat())
+                print(f"Leaderboard timestamp refreshed at UTC: {current_utc}")
                 return
-
             while self.process_user_batch():
                 pass
-
             current_utc = datetime.datetime.now(datetime.UTC)
             self.redis.set(self.REDIS_LASTUPDATED_KEY, current_utc.isoformat())
             print(f"Leaderboard last updated at UTC: {current_utc}")
-
             self.set_leaderboard_flag_to_no()
         except Exception as e:
             print(f"Error processing bets: {e}")
