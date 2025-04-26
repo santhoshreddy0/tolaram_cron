@@ -7,6 +7,7 @@ class Dream11Bets:
 
     PLAYER_TABLE = "dream11_players"
     MAPPING_TABLE = "match_player_mapping"
+    TOURNAMENTS_TABLE = "tournaments"
     REDIS_LEADERBOARD_KEY = "leaderboard"
     REDIS_LASTUPDATED_KEY = "last_updated"
     BATCH_LIMIT = 10
@@ -17,6 +18,25 @@ class Dream11Bets:
         self.redis = RedisClient()
         self.limit = self.BATCH_LIMIT
         self.offset = self.INITIAL_OFFSET
+
+    def should_update_leaderboard(self):
+        sql = f"""
+            SELECT update_leaderboard
+            FROM {self.TOURNAMENTS_TABLE}
+        """
+        with self.db.cursor() as cursor:
+            cursor.execute(sql)
+            result = cursor.fetchone()
+            return result and result.get("update_leaderboard") == "yes"
+
+    def set_leaderboard_flag_to_no(self):
+        sql = f"""
+            UPDATE {self.TOURNAMENTS_TABLE}
+            SET update_leaderboard = 'no'
+        """
+        with self.db.cursor() as cursor:
+            cursor.execute(sql)
+        self.db.commit()
 
     def get_users_batch(self, limit=10, offset=0):
         sql = f"""
@@ -65,12 +85,18 @@ class Dream11Bets:
 
     def process(self):
         try:
+            if not self.should_update_leaderboard():
+                print("Leaderboard is already up to date. Exiting...")
+                return
+
             while self.process_user_batch():
                 pass
 
             current_utc = datetime.datetime.now(datetime.UTC)
             self.redis.set(self.REDIS_LASTUPDATED_KEY, current_utc.isoformat())
             print(f"Leaderboard last updated at UTC: {current_utc}")
+
+            self.set_leaderboard_flag_to_no()
         except Exception as e:
             print(f"Error processing bets: {e}")
         finally:
