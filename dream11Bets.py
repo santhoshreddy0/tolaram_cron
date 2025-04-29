@@ -10,6 +10,7 @@ class Dream11Bets:
     TOURNAMENTS_TABLE = "tournaments"
     REDIS_LEADERBOARD_KEY = "leaderboard"
     REDIS_LASTUPDATED_KEY = "last_updated"
+    REDIS_SCORE_UPDATED_AT_KEY = "score_updated_at"
     BATCH_LIMIT = 10
     INITIAL_OFFSET = 0
 
@@ -89,12 +90,16 @@ class Dream11Bets:
                 self.redis.set(self.REDIS_LASTUPDATED_KEY, current_utc.isoformat())
                 print(f"Leaderboard timestamp refreshed at UTC: {current_utc}")
                 return
+
             while self.process_user_batch():
                 pass
+
             current_utc = datetime.datetime.now(datetime.UTC)
             self.redis.set(self.REDIS_LASTUPDATED_KEY, current_utc.isoformat())
+            self.redis.set(self.REDIS_SCORE_UPDATED_AT_KEY, current_utc.isoformat())
             print(f"Leaderboard last updated at UTC: {current_utc}")
             self.set_leaderboard_flag_to_no()
+
         except Exception as e:
             print(f"Error processing bets: {e}")
         finally:
