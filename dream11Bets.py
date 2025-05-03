@@ -11,6 +11,7 @@ class Dream11Bets:
     REDIS_LEADERBOARD_KEY = "leaderboard"
     REDIS_LASTUPDATED_KEY = "last_updated"
     REDIS_SCORE_UPDATED_AT_KEY = "score_updated_at"
+    REDIS_UPDATE_FLAG_KEY = "update_leaderboard"
     BATCH_LIMIT = 10
     INITIAL_OFFSET = 0
 
@@ -21,23 +22,11 @@ class Dream11Bets:
         self.offset = self.INITIAL_OFFSET
 
     def should_update_leaderboard(self):
-        sql = f"""
-            SELECT update_leaderboard
-            FROM {self.TOURNAMENTS_TABLE}
-        """
-        with self.db.cursor() as cursor:
-            cursor.execute(sql)
-            result = cursor.fetchone()
-            return result and result.get("update_leaderboard") == "yes"
+        value = self.redis.get(self.REDIS_UPDATE_FLAG_KEY)
+        return value and value == "yes"
 
     def set_leaderboard_flag_to_no(self):
-        sql = f"""
-            UPDATE {self.TOURNAMENTS_TABLE}
-            SET update_leaderboard = 'no'
-        """
-        with self.db.cursor() as cursor:
-            cursor.execute(sql)
-        self.db.commit()
+        self.redis.set(self.REDIS_UPDATE_FLAG_KEY, "no")
 
     def get_users_batch(self, limit=10, offset=0):
         sql = f"""
